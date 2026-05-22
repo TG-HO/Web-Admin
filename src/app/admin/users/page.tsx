@@ -1,0 +1,193 @@
+'use client';
+
+import { useState } from 'react';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import { useUsers } from '@/hooks/useQueries';
+import { formatDate, formatCurrency } from '@/utils';
+import { MoreVertical, Search } from 'lucide-react';
+import { PAGINATION_LIMITS } from '@/constants';
+
+export default function UsersPage() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const { data, isLoading } = useUsers({ page, limit: PAGINATION_LIMITS.DEFAULT });
+
+  const statusColors: Record<string, string> = {
+    active: 'bg-green-100 text-green-800 dark:bg-green-900/20',
+    blocked: 'bg-red-100 text-red-800 dark:bg-red-900/20',
+    suspended: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20',
+    banned: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20',
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+          <p className="text-muted-foreground">Manage and monitor all platform users.</p>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Filters</CardTitle>
+          </CardHeader>
+          <CardContent className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button variant="outline">Filter</Button>
+          </CardContent>
+        </Card>
+
+        {/* Users Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Users</CardTitle>
+            <CardDescription>
+              Total: {data?.total || 0} users
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="animate-spin">
+                  <div className="h-8 w-8 rounded-full border-4 border-muted border-t-orange-500" />
+                </div>
+              </div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Wallet</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead>Reports</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data?.data?.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.full_name}</TableCell>
+                        <TableCell className="text-sm">{user.email}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {user.user_role === 'creator' ? 'Creator' : 'Filler'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[user.status]}>
+                            {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{formatCurrency(user.wallet_balance)}</TableCell>
+                        <TableCell className="text-sm">{formatDate(user.created_at)}</TableCell>
+                        <TableCell className="text-center">{user.total_reports}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>View Profile</DropdownMenuItem>
+                              <DropdownMenuItem>Send Message</DropdownMenuItem>
+                              <DropdownMenuItem>View Reports</DropdownMenuItem>
+                              {user.status === 'active' && (
+                                <>
+                                  <DropdownMenuItem className="text-yellow-600">Block User</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-orange-600">Suspend User</DropdownMenuItem>
+                                </>
+                              )}
+                              {user.status !== 'active' && (
+                                <DropdownMenuItem className="text-green-600">Unblock User</DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                {/* Pagination */}
+                {data && data.total_pages > 1 && (
+                  <div className="mt-4 flex justify-center">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => setPage(Math.max(1, page - 1))}
+                            className="cursor-pointer"
+                          />
+                        </PaginationItem>
+
+                        {Array.from({ length: Math.min(5, data.total_pages) }).map((_, i) => (
+                          <PaginationItem key={i}>
+                            <PaginationLink
+                              onClick={() => setPage(i + 1)}
+                              isActive={page === i + 1}
+                              className="cursor-pointer"
+                            >
+                              {i + 1}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => setPage(Math.min(data.total_pages, page + 1))}
+                            className="cursor-pointer"
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+}

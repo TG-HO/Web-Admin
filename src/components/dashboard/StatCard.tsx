@@ -1,7 +1,9 @@
 'use client';
 
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, Users, FileText, AlertCircle } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 interface StatCardProps {
   title: string;
@@ -9,11 +11,12 @@ interface StatCardProps {
   icon: React.ReactNode;
   trend?: number;
   description?: string;
+  href?: string;
 }
 
-export function StatCard({ title, value, icon, trend, description }: StatCardProps) {
-  return (
-    <Card>
+export function StatCard({ title, value, icon, trend, description, href }: StatCardProps) {
+  const card = (
+    <Card className={cn(href ? 'cursor-pointer transition-shadow duration-200 hover:shadow-lg' : '')}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <div className="text-orange-500">{icon}</div>
@@ -30,4 +33,6 @@ export function StatCard({ title, value, icon, trend, description }: StatCardPro
       </CardContent>
     </Card>
   );
+
+  return href ? <Link href={href}>{card}</Link> : card;
 }

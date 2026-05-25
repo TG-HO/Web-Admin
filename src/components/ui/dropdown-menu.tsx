@@ -5,6 +5,7 @@ import { Menu as MenuPrimitive } from "@base-ui/react/menu"
 
 import { cn } from "@/lib/utils"
 import { ChevronRightIcon, CheckIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
   return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />
@@ -14,8 +15,35 @@ function DropdownMenuPortal({ ...props }: MenuPrimitive.Portal.Props) {
   return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
 }
 
-function DropdownMenuTrigger({ ...props }: MenuPrimitive.Trigger.Props) {
-  return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />
+function DropdownMenuTrigger({ children, className, ...props }: MenuPrimitive.Trigger.Props) {
+  const child = React.Children.only((children as any) ?? null) as React.ReactElement | null
+
+  const isNativeButton = !!(
+    child && React.isValidElement(child) && typeof child.type === 'string' && child.type === 'button'
+  )
+  const isCustomButton = !!(
+    child &&
+      React.isValidElement(child) &&
+      (child.type === Button || ((child.props as any) && (child.props as any)['data-slot'] === 'button'))
+  )
+
+  // If the caller already passed a <button> or our `Button` component as the trigger,
+  // use it as the `render` prop to avoid nesting buttons. Otherwise render a default Button.
+  if (isNativeButton || isCustomButton) {
+    return (
+      <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" render={child as any} {...props} />
+    )
+  }
+
+  return (
+    <MenuPrimitive.Trigger
+      data-slot="dropdown-menu-trigger"
+      render={<Button variant="ghost" className={cn("w-full justify-between", className)} />}
+      {...props}
+    >
+      {children}
+    </MenuPrimitive.Trigger>
+  )
 }
 
 function DropdownMenuContent({

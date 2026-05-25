@@ -13,14 +13,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { usePayments } from '@/hooks/useQueries';
 import { formatDate, formatCurrency } from '@/utils';
 import { Search } from 'lucide-react';
 
 export default function PaymentsPage() {
-  const transactions = [
-    { id: '1', user: 'John Doe', amount: 500, type: 'credit', status: 'completed', date: new Date().toISOString() },
-    { id: '2', user: 'Jane Smith', amount: 250, type: 'debit', status: 'pending', date: new Date().toISOString() },
-  ];
+  const { data, isLoading } = usePayments({ page: 1, limit: 10 });
+  const transactions = data?.transactions || [];
 
   return (
     <DashboardLayout>
@@ -38,8 +37,8 @@ export default function PaymentsPage() {
               <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">$45,231.89</p>
-              <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+              <p className="text-2xl font-bold">{formatCurrency(data?.totalRevenue || 0)}</p>
+              <p className="text-xs text-muted-foreground">{data?.transactions.length ?? 0} transactions</p>
             </CardContent>
           </Card>
 
@@ -48,8 +47,8 @@ export default function PaymentsPage() {
               <CardTitle className="text-sm font-medium">Pending Withdrawals</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">$8,500</p>
-              <p className="text-xs text-muted-foreground">12 pending requests</p>
+              <p className="text-2xl font-bold">{formatCurrency(data?.pendingWithdrawals || 0)}</p>
+              <p className="text-xs text-muted-foreground">{data?.withdrawals?.filter((withdrawal) => withdrawal.status === 'pending').length ?? 0} pending requests</p>
             </CardContent>
           </Card>
 
@@ -58,8 +57,8 @@ export default function PaymentsPage() {
               <CardTitle className="text-sm font-medium">Platform Fees</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">$4,523</p>
-              <p className="text-xs text-muted-foreground">10% of revenue</p>
+              <p className="text-2xl font-bold">{formatCurrency((data?.totalRevenue || 0) * 0.1)}</p>
+              <p className="text-xs text-muted-foreground">10% of total completed revenue</p>
             </CardContent>
           </Card>
         </div>
@@ -70,36 +69,46 @@ export default function PaymentsPage() {
             <CardTitle>Recent Transactions</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions.map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell>{tx.user}</TableCell>
-                    <TableCell>{formatCurrency(tx.amount)}</TableCell>
-                    <TableCell>
-                      <Badge variant={tx.type === 'credit' ? 'default' : 'outline'}>
-                        {tx.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={tx.status === 'completed' ? 'default' : 'outline'}>
-                        {tx.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(tx.date)}</TableCell>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-48">
+                <div className="animate-spin">
+                  <div className="h-8 w-8 rounded-full border-4 border-muted border-t-orange-500" />
+                </div>
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">No payments or transactions have been recorded yet.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {transactions.map((tx) => (
+                    <TableRow key={tx.id}>
+                      <TableCell>{(tx as any).users?.full_name || tx.user_id}</TableCell>
+                      <TableCell>{formatCurrency(tx.amount)}</TableCell>
+                      <TableCell>
+                        <Badge variant={tx.type === 'credit' ? 'default' : 'outline'}>
+                          {tx.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={tx.status === 'completed' ? 'default' : 'outline'}>
+                          {tx.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatDate(tx.created_at)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

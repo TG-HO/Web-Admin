@@ -28,15 +28,22 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { useSurveys } from '@/hooks/useQueries';
+import { useSurveys, useDeleteSurveyMutation, useDownSurveyMutation, useRestoreSurveyMutation } from '@/hooks/useQueries';
+import { useRouter } from 'next/navigation';
+import { getSurveyReward } from '@/utils';
 import { formatDate, formatCurrency, truncate } from '@/utils';
 import { MoreVertical, Search } from 'lucide-react';
 import { PAGINATION_LIMITS } from '@/constants';
+import { toast } from 'sonner';
 
 export default function SurveysPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const { data, isLoading } = useSurveys({ page, limit: PAGINATION_LIMITS.DEFAULT });
+  const downSurveyMutation = useDownSurveyMutation();
+  const restoreSurveyMutation = useRestoreSurveyMutation();
+  const deleteSurveyMutation = useDeleteSurveyMutation();
+  const router = useRouter();
 
   const statusColors: Record<string, string> = {
     draft: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20',
@@ -87,6 +94,8 @@ export default function SurveysPage() {
                   <div className="h-8 w-8 rounded-full border-4 border-muted border-t-orange-500" />
                 </div>
               </div>
+            ) : data?.data?.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">No surveys match your criteria.</div>
             ) : (
               <>
                 <Table>
@@ -108,16 +117,24 @@ export default function SurveysPage() {
                         <TableCell className="font-medium max-w-xs">
                           {truncate(survey.title, 40)}
                         </TableCell>
-                        <TableCell className="text-sm">Creator</TableCell>
+                        <TableCell className="text-sm">
+                          {((survey as any).creator_name) ? (
+                            <a href={`/admin/users/${(survey as any).user_id || (survey as any).creator_id}`} className="underline">
+                              {truncate((survey as any).creator_name, 30)}
+                            </a>
+                          ) : (
+                            'Creator'
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge className={statusColors[survey.status]}>
                             {survey.status.charAt(0).toUpperCase() + survey.status.slice(1)}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {survey.total_responses_collected} / {survey.target_responses}
+                          {(survey as any).responses_count ?? survey.total_responses_collected ?? 0} / {survey.target_responses}
                         </TableCell>
-                        <TableCell>{formatCurrency(survey.reward_per_response)}</TableCell>
+                        <TableCell>{formatCurrency(getSurveyReward(survey))}</TableCell>
                         <TableCell className="text-sm">
                           {survey.published_at ? formatDate(survey.published_at) : '-'}
                         </TableCell>
@@ -130,17 +147,55 @@ export default function SurveysPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>View Survey</DropdownMenuItem>
-                              <DropdownMenuItem>View Responses</DropdownMenuItem>
-                              <DropdownMenuItem>View Analytics</DropdownMenuItem>
-                              <DropdownMenuItem>View Reports</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}`)}>
+                                View Survey
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/responses`)}>
+                                View Responses
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/analytics`)}>
+                                View Analytics
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/reports`)}>
+                                View Reports
+                              </DropdownMenuItem>
                               {survey.status !== 'downed' && (
-                                <DropdownMenuItem className="text-red-600">Down Survey</DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-red-600"
+                                  onClick={() =>
+                                    downSurveyMutation.mutate(survey.id, {
+                                      onSuccess: () => toast.success('Survey has been taken down.'),
+                                      onError: (error) => toast.error(error instanceof Error ? error.message : 'Unable to down survey'),
+                                    })
+                                  }
+                                >
+                                  Down Survey
+                                </DropdownMenuItem>
                               )}
                               {survey.status === 'downed' && (
-                                <DropdownMenuItem className="text-green-600">Restore Survey</DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-green-600"
+                                  onClick={() =>
+                                    restoreSurveyMutation.mutate(survey.id, {
+                                      onSuccess: () => toast.success('Survey restored to published status.'),
+                                      onError: (error) => toast.error(error instanceof Error ? error.message : 'Unable to restore survey'),
+                                    })
+                                  }
+                                >
+                                  Restore Survey
+                                </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem className="text-red-600">Delete Survey</DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() =>
+                                  deleteSurveyMutation.mutate(survey.id, {
+                                    onSuccess: () => toast.success('Survey deleted successfully.'),
+                                    onError: (error) => toast.error(error instanceof Error ? error.message : 'Unable to delete survey'),
+                                  })
+                                }
+                              >
+                                Delete Survey
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

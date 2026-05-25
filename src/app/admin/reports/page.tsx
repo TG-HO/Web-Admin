@@ -21,15 +21,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useReports } from '@/hooks/useQueries';
+import { useReports, useUpdateReportStatusMutation } from '@/hooks/useQueries';
 import { formatDate } from '@/utils';
 import { MoreVertical, Search } from 'lucide-react';
+import { toast } from 'sonner';
 import { PAGINATION_LIMITS } from '@/constants';
 
 export default function ReportsPage() {
   const [page, setPage] = useState(1);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const { data, isLoading } = useReports({ page, limit: PAGINATION_LIMITS.DEFAULT });
+  const updateReportStatusMutation = useUpdateReportStatusMutation();
 
   const statusColors: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20',
@@ -80,6 +82,8 @@ export default function ReportsPage() {
                   <div className="h-8 w-8 rounded-full border-4 border-muted border-t-orange-500" />
                 </div>
               </div>
+            ) : data?.data?.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">No reports were found.</div>
             ) : (
               <>
                 <Table>
@@ -122,11 +126,51 @@ export default function ReportsPage() {
                               <DropdownMenuItem onClick={() => setSelectedReport(report)}>
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem>Send Warning</DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600">Down Content</DropdownMenuItem>
-                              <DropdownMenuItem className="text-orange-600">Suspend Account</DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600">Ban Account</DropdownMenuItem>
-                              <DropdownMenuItem className="text-gray-600">Dismiss</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => toast(`Warning sent for report ${report.id}`)}>
+                                Send Warning
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() =>
+                                  updateReportStatusMutation.mutate(
+                                    { reportId: report.id, status: 'action_taken' },
+                                    {
+                                      onSuccess: () => toast.success('Report marked action taken'),
+                                      onError: (error) => toast.error(error instanceof Error ? error.message : 'Unable to update report'),
+                                    }
+                                  )
+                                }
+                              >
+                                Down Content
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-orange-600"
+                                onClick={() =>
+                                  updateReportStatusMutation.mutate(
+                                    { reportId: report.id, status: 'reviewed' },
+                                    {
+                                      onSuccess: () => toast.success('Report marked as reviewed'),
+                                      onError: (error) => toast.error(error instanceof Error ? error.message : 'Unable to update report'),
+                                    }
+                                  )
+                                }
+                              >
+                                Review Report
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-gray-600"
+                                onClick={() =>
+                                  updateReportStatusMutation.mutate(
+                                    { reportId: report.id, status: 'dismissed' },
+                                    {
+                                      onSuccess: () => toast.success('Report dismissed'),
+                                      onError: (error) => toast.error(error instanceof Error ? error.message : 'Unable to update report'),
+                                    }
+                                  )
+                                }
+                              >
+                                Dismiss
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

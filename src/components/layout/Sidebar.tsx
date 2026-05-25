@@ -79,7 +79,7 @@ export function Sidebar() {
       <div className="border-t pt-4">
         <DropdownMenu>
           <DropdownMenuTrigger>
-            <Button variant="ghost" className="w-full justify-between">
+            <>
               <div className="flex items-center gap-2">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user?.avatar_url} />
@@ -97,7 +97,7 @@ export function Sidebar() {
                 </div>
               </div>
               <ChevronDown className="h-4 w-4" />
-            </Button>
+            </>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-56">

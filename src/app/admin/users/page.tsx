@@ -28,21 +28,36 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { useUsers } from '@/hooks/useQueries';
+import { useUsers, useUpdateUserMutation } from '@/hooks/useQueries';
+import { SurveyUser } from '@/types';
 import { formatDate, formatCurrency } from '@/utils';
 import { MoreVertical, Search } from 'lucide-react';
 import { PAGINATION_LIMITS } from '@/constants';
+import { toast } from 'sonner';
 
 export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const { data, isLoading } = useUsers({ page, limit: PAGINATION_LIMITS.DEFAULT });
+  const [roleFilter, setRoleFilter] = useState<'all' | 'creator' | 'filler'>('all');
+  const { data, isLoading } = useUsers({ page, limit: PAGINATION_LIMITS.DEFAULT, role: roleFilter === 'all' ? undefined : roleFilter });
+  const updateUserMutation = useUpdateUserMutation();
 
   const statusColors: Record<string, string> = {
     active: 'bg-green-100 text-green-800 dark:bg-green-900/20',
     blocked: 'bg-red-100 text-red-800 dark:bg-red-900/20',
     suspended: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20',
     banned: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20',
+  };
+
+  const handleUserStatusChange = async (userId: string, status: SurveyUser['status']) => {
+    updateUserMutation.mutate({ userId, data: { status } }, {
+      onSuccess: () => {
+        toast.success(`User status updated to ${status}`);
+      },
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : 'Unable to update user status');
+      },
+    });
   };
 
   return (
@@ -69,7 +84,18 @@ export default function UsersPage() {
                 className="pl-10"
               />
             </div>
-            <Button variant="outline">Filter</Button>
+            <div className="flex items-center gap-2">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as any)}
+                className="rounded-md border px-2 py-1 text-sm"
+              >
+                <option value="all">All Roles</option>
+                <option value="creator">Creators</option>
+                <option value="filler">Fillers</option>
+              </select>
+              <Button variant="outline">Filter</Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -88,6 +114,8 @@ export default function UsersPage() {
                   <div className="h-8 w-8 rounded-full border-4 border-muted border-t-orange-500" />
                 </div>
               </div>
+            ) : data?.data?.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">No users available at the moment.</div>
             ) : (
               <>
                 <Table>
@@ -99,7 +127,7 @@ export default function UsersPage() {
                       <TableHead>Status</TableHead>
                       <TableHead>Wallet</TableHead>
                       <TableHead>Joined</TableHead>
-                      <TableHead>Reports</TableHead>
+                      {roleFilter === 'creator' && <TableHead>Reports</TableHead>}
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -120,7 +148,9 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>{formatCurrency(user.wallet_balance)}</TableCell>
                         <TableCell className="text-sm">{formatDate(user.created_at)}</TableCell>
-                        <TableCell className="text-center">{user.total_reports}</TableCell>
+                        {roleFilter === 'creator' && (
+                          <TableCell className="text-center">{user.total_reports}</TableCell>
+                        )}
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger>
@@ -129,17 +159,29 @@ export default function UsersPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>View Profile</DropdownMenuItem>
-                              <DropdownMenuItem>Send Message</DropdownMenuItem>
-                              <DropdownMenuItem>View Reports</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => toast(`Viewing profile for ${user.full_name}`)}>
+                                View Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => toast(`Send message to ${user.full_name}`)}>
+                                Send Message
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => toast(`Reviewing reports for ${user.full_name}`)}>
+                                View Reports
+                              </DropdownMenuItem>
                               {user.status === 'active' && (
                                 <>
-                                  <DropdownMenuItem className="text-yellow-600">Block User</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-orange-600">Suspend User</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-red-600" onClick={() => handleUserStatusChange(user.id, 'blocked')}>
+                                    Block User
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-orange-600" onClick={() => handleUserStatusChange(user.id, 'suspended')}>
+                                    Suspend User
+                                  </DropdownMenuItem>
                                 </>
                               )}
                               {user.status !== 'active' && (
-                                <DropdownMenuItem className="text-green-600">Unblock User</DropdownMenuItem>
+                                <DropdownMenuItem className="text-green-600" onClick={() => handleUserStatusChange(user.id, 'active')}>
+                                  Unblock User
+                                </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>

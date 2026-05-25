@@ -2,34 +2,20 @@
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { useDashboardStats } from '@/hooks/useQueries';
+import { useDashboardAnalytics, useDashboardStats } from '@/hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, FileText, AlertCircle, TrendingUp, CreditCard, LogOut } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { formatCurrency, formatNumber } from '@/utils';
 
 export default function DashboardPage() {
-  const { data: stats, isLoading } = useDashboardStats();
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: analyticsData, isLoading: analyticsLoading } = useDashboardAnalytics();
 
-  const userGrowthData = [
-    { date: 'Jan', users: 100 },
-    { date: 'Feb', users: 150 },
-    { date: 'Mar', users: 200 },
-    { date: 'Apr', users: 280 },
-    { date: 'May', users: 350 },
-  ];
+  const userGrowthData = analyticsData?.userGrowthData ?? [];
+  const revenueData = analyticsData?.revenueData ?? [];
 
-  const revenueData = [
-    { date: 'Mon', revenue: 1200 },
-    { date: 'Tue', revenue: 1500 },
-    { date: 'Wed', revenue: 1800 },
-    { date: 'Thu', revenue: 1400 },
-    { date: 'Fri', revenue: 2000 },
-    { date: 'Sat', revenue: 2200 },
-    { date: 'Sun', revenue: 1900 },
-  ];
-
-  if (isLoading) {
+  if (statsLoading || analyticsLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
@@ -56,25 +42,29 @@ export default function DashboardPage() {
             title="Total Users"
             value={formatNumber(stats?.total_users || 0)}
             icon={<Users className="h-4 w-4" />}
-            trend={12}
+            trend={stats?.todays_signups ?? 0}
+            href="/admin/users"
           />
           <StatCard
             title="Active Surveys"
             value={formatNumber(stats?.active_surveys || 0)}
             icon={<FileText className="h-4 w-4" />}
-            trend={5}
+            trend={stats?.todays_surveys ?? 0}
+            href="/admin/surveys"
           />
           <StatCard
             title="Pending Reports"
             value={formatNumber(stats?.pending_reports || 0)}
             icon={<AlertCircle className="h-4 w-4" />}
-            trend={-3}
+            trend={stats?.pending_reports ? -5 : 0}
+            href="/admin/reports"
           />
           <StatCard
             title="Total Revenue"
             value={formatCurrency(stats?.total_revenue || 0)}
             icon={<TrendingUp className="h-4 w-4" />}
             trend={8}
+            href="/admin/payments"
           />
         </div>
 
@@ -152,26 +142,39 @@ export default function DashboardPage() {
         {/* Real-time Activity */}
         <Card>
           <CardHeader>
-            <CardTitle>Real-time Activity Feed</CardTitle>
-            <CardDescription>Latest activities on the platform</CardDescription>
+            <CardTitle>Activity Summary</CardTitle>
+            <CardDescription>Latest counts and platform activity</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { type: 'New User', message: 'john_doe registered', time: '2 minutes ago' },
-                { type: 'Report', message: 'Survey #123 reported', time: '5 minutes ago' },
-                { type: 'Survey', message: 'New survey published by jane_smith', time: '10 minutes ago' },
-                { type: 'Withdrawal', message: 'Withdrawal request from mike_003', time: '15 minutes ago' },
-                { type: 'Alert', message: 'Payment processing failure detected', time: '20 minutes ago' },
-              ].map((activity, idx) => (
-                <div key={idx} className="flex items-center justify-between border-b pb-3 last:border-b-0">
-                  <div>
-                    <p className="text-sm font-medium">{activity.message}</p>
-                    <p className="text-xs text-muted-foreground">{activity.type}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{activity.time}</span>
+              <div className="flex items-center justify-between border-b pb-3 last:border-b-0">
+                <div>
+                  <p className="text-sm font-medium">{stats?.todays_signups ?? 0} new users registered today</p>
+                  <p className="text-xs text-muted-foreground">Users joined today</p>
                 </div>
-              ))}
+                <span className="text-xs text-muted-foreground">Updated now</span>
+              </div>
+              <div className="flex items-center justify-between border-b pb-3 last:border-b-0">
+                <div>
+                  <p className="text-sm font-medium">{stats?.pending_reports ?? 0} pending reports</p>
+                  <p className="text-xs text-muted-foreground">Reports requiring review</p>
+                </div>
+                <span className="text-xs text-muted-foreground">Updated now</span>
+              </div>
+              <div className="flex items-center justify-between border-b pb-3 last:border-b-0">
+                <div>
+                  <p className="text-sm font-medium">{stats?.active_surveys ?? 0} surveys currently published</p>
+                  <p className="text-xs text-muted-foreground">Live survey count</p>
+                </div>
+                <span className="text-xs text-muted-foreground">Updated now</span>
+              </div>
+              <div className="flex items-center justify-between border-b pb-3 last:border-b-0">
+                <div>
+                  <p className="text-sm font-medium">{stats?.withdrawals_pending ?? 0} pending payout requests</p>
+                  <p className="text-xs text-muted-foreground">Pending withdrawal activity</p>
+                </div>
+                <span className="text-xs text-muted-foreground">Updated now</span>
+              </div>
             </div>
           </CardContent>
         </Card>

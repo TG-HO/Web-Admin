@@ -109,8 +109,8 @@ export function LoginForm() {
 
           <div className="mt-4 text-center text-sm text-muted-foreground">
             <p>Demo credentials:</p>
-            <p>Email: admin@survey.app</p>
-            <p>Password: demo123456</p>
+            <p>Email: admin@askend.com</p>
+            <p>Password: admin123</p>
           </div>
         </CardContent>
       </Card>

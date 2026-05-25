@@ -21,16 +21,32 @@ export function formatRelativeTime(date: string | Date) {
 }
 
 // Currency formatting
-export function formatCurrency(amount: number, currency = 'USD') {
+export function formatCurrency(amount: number | string | null | undefined, currency = 'USD') {
+  const value =
+    typeof amount === 'string'
+      ? parseFloat(amount)
+      : typeof amount === 'number'
+      ? amount
+      : 0;
+
+  const normalized = Number.isFinite(value) ? value : 0;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-  }).format(amount);
+  }).format(normalized);
 }
 
 // Number formatting
-export function formatNumber(number: number) {
-  return new Intl.NumberFormat('en-US').format(number);
+export function formatNumber(number: number | string | null | undefined) {
+  const value =
+    typeof number === 'string'
+      ? parseFloat(number)
+      : typeof number === 'number'
+      ? number
+      : 0;
+
+  const normalized = Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat('en-US').format(normalized);
 }
 
 export function formatPercentage(value: number, decimals = 1) {
@@ -40,6 +56,28 @@ export function formatPercentage(value: number, decimals = 1) {
 // String utilities
 export function truncate(str: string, length: number) {
   return str.length > length ? `${str.substring(0, length)}...` : str;
+}
+
+// Survey helpers
+export function getSurveyReward(survey: any): number {
+  if (!survey) return 0;
+  const possible = [
+    survey.reward_per_response,
+    survey.reward_amount,
+    survey.reward,
+    survey.price,
+    survey.price_per_response,
+    survey.estimated_reward,
+  ];
+
+  for (const v of possible) {
+    if (v !== undefined && v !== null && v !== '') {
+      const num = typeof v === 'string' ? parseFloat(v) : Number(v);
+      if (Number.isFinite(num)) return num;
+    }
+  }
+
+  return 0;
 }
 
 export function capitalizeFirstLetter(str: string) {
